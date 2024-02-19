@@ -1,1 +1,1 @@
-# scMAE
+# cyMAE
