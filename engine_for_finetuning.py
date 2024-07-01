@@ -18,11 +18,7 @@ import utils
 import time
 
 def run_batch(args, model, samples):
-    if args.task == "sample-level":
-        samples = samples.view(samples.size(1), samples.size(2))
-        outputs = model(samples).mean(0, keepdim=True)
-    else:
-        outputs = model(samples)
+    outputs = model(samples)
     return outputs
 
 
@@ -154,75 +150,34 @@ def evaluate(args, data_loader, model, device):
     # switch to evaluation mode
     model.eval()
 
-    if args.ensemble:
-        ensemble = []
-        for it in range(args.ensemble_times):
-            outputs = []
-            targets = []
-            for batch in metric_logger.log_every(data_loader, 10, header):
-                samples, _  = batch[0]
-                target = batch[-1]
-                samples = samples.to(device, non_blocking=True)
+    outputs = []
+    targets = []
+    for batch in metric_logger.log_every(data_loader, 10, header):
+        samples, _  = batch[0]
+        target = batch[-1]
+        samples = samples.to(device, non_blocking=True)
 
-                # compute output
-                with torch.cuda.amp.autocast():
-                    output = run_batch(
-                        args, model, samples)
-                outputs.append(output.cpu())
-                targets.append(target)
-            ensemble.append(torch.vstack(outputs).float())
-            targets = torch.cat(targets)
-        ploss = criterion(ensemble[0], targets)
-        pacc1 = accuracy(ensemble[0], targets, topk=(1,))[0]
-        batch_size = ensemble[0].size(0)
-        metric_logger.meters['ploss'].update(ploss.item())
-        metric_logger.meters['pacc1'].update(pacc1.item(), n=batch_size)
+        # compute output
+        with torch.cuda.amp.autocast():
+            output = run_batch(
+                args, model, samples)
+        outputs.append(output.cpu())
+        targets.append(target)
+    outputs = torch.vstack(outputs).float()
+    targets = torch.cat(targets)
 
-        tmp = torch.zeros_like(ensemble[0])
-        for p in ensemble:
-            tmp += p
-        ensemble = (tmp/len(ensemble)).float()
-        loss = criterion(ensemble, targets)
-        acc1 = accuracy(ensemble, targets, topk=(1,))[0]
-        bacc = utils.baccuracy(ensemble, targets)
-        ari = utils.ARI(ensemble, targets)
-        nmi = utils.NMI(ensemble, targets)
-        confs = utils.confusion(ensemble, targets)
-        batch_size = ensemble.size(0)
-        metric_logger.update(loss=loss.item())
-        metric_logger.meters['acc1'].update(acc1.item(), n=batch_size)
-        metric_logger.meters['bacc'].update(bacc, n=batch_size)
-        metric_logger.meters['ari'].update(ari, n=batch_size)
-        metric_logger.meters['nmi'].update(nmi, n=batch_size)
-    else:
-        outputs = []
-        targets = []
-        for batch in metric_logger.log_every(data_loader, 10, header):
-            samples, _  = batch[0]
-            target = batch[-1]
-            samples = samples.to(device, non_blocking=True)
- 
-            # compute output
-            with torch.cuda.amp.autocast():
-                output = run_batch(
-                    args, model, samples)
-            outputs.append(output.cpu())
-            targets.append(target)
-        outputs = torch.vstack(outputs).float()
-        targets = torch.cat(targets)
-
-        loss = criterion(outputs, targets)
-        acc1 = accuracy(outputs, targets, topk=(1,))[0]
-        bacc = utils.baccuracy(outputs, targets)
-        ari = utils.ARI(outputs, targets)
-        nmi = utils.NMI(outputs, targets)
-        confs = utils.confusion(outputs, targets)
-        batch_size = outputs.size(0)
-        metric_logger.update(loss=loss.item())
-        metric_logger.meters['acc1'].update(acc1.item(), n=batch_size)
-        metric_logger.meters['bacc'].update(bacc, n=batch_size)
-        metric_logger.meters['ari'].update(ari, n=batch_size)
-        metric_logger.meters['nmi'].update(nmi, n=batch_size)
+    loss = criterion(outputs, targets)
+    acc1 = accuracy(outputs, targets, topk=(1,))[0]
+    bacc = utils.baccuracy(outputs, targets)
+    ari = utils.ARI(outputs, targets)
+    nmi = utils.NMI(outputs, targets)
+    confs = utils.confusion(outputs, targets)
+    batch_size = outputs.size(0)
+    metric_logger.update(loss=loss.item())
+    metric_logger.meters['acc1'].update(acc1.item(), n=batch_size)
+    metric_logger.meters['bacc'].update(bacc, n=batch_size)
+    metric_logger.meters['ari'].update(ari, n=batch_size)
+    metric_logger.meters['nmi'].update(nmi, n=batch_size)
     #    acc1, acc5 = accuracy(output, target, topk=(1, 5))
 
     #    batch_size = images.shape[0]

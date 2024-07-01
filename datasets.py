@@ -12,7 +12,7 @@ import numpy as np
 from torchvision import datasets, transforms
 
 from masking_generator import RandomMaskingGenerator
-from dataset_folder import CellFolder, SampleFolder
+from dataset_folder import CellFolder
 
 
 class MaskingForMAE(object):
@@ -61,12 +61,8 @@ class RandomSelectForMAE(object):
 
 def build_dataset(split_set, args, predefined_class_to_idx=None):
 
-    if args.task == "cell-level":
-        transform = NullForMAE()
-        dataset = CellFolder(args.fold, split_set, args.data_path, predefined_class_to_idx=predefined_class_to_idx, labelling=("deeper" if args.nb_classes >20 else "simple"), fewshot = args.fewshot, nshot = args.nshot, transform=transform) 
-    else:
-        transform = RandomSelectForMAE(args)
-        dataset = SampleFolder(args.fold, split_set, args.data_path, args.label_name, predefined_class_to_idx=predefined_class_to_idx, transform=transform)
+    transform = NullForMAE()
+    dataset = CellFolder(args.fold, split_set, args.data_path, predefined_class_to_idx=predefined_class_to_idx, fewshot = args.fewshot, nshot = args.nshot, transform=transform) 
     nb_classes = args.nb_classes
     assert len(dataset.class_to_idx) == nb_classes
     assert nb_classes == args.nb_classes

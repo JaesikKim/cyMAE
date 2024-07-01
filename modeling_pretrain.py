@@ -23,8 +23,7 @@ def trunc_normal_(tensor, mean=0., std=1.):
 
 
 __all__ = [
-    'pretrain_mae_base_patch16_224', 
-    'pretrain_mae_large_patch16_224', 
+    'pretrain_mae_30D_6L'
 ]
 
 
@@ -118,13 +117,12 @@ class PretrainVisionTransformerDecoder(nn.Module):
     """
     def __init__(self, num_features=30, num_classes=1, embed_dim=768, depth=12,
                  num_heads=12, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop_rate=0., attn_drop_rate=0.,
-                 drop_path_rate=0., norm_layer=nn.LayerNorm, init_values=None, is_ZIGloss=False
+                 drop_path_rate=0., norm_layer=nn.LayerNorm, init_values=None
                  ):
         super().__init__()
         self.num_classes = num_classes
 #         assert num_classes == 3 * patch_size ** 2
         self.embed_dim = embed_dim
-        self.is_ZIGloss = is_ZIGloss
 
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]  # stochastic depth decay rule
         self.blocks = nn.ModuleList([
@@ -135,14 +133,7 @@ class PretrainVisionTransformerDecoder(nn.Module):
             for i in range(depth)])
         self.norm = norm_layer(embed_dim)
         self.head = nn.Linear(embed_dim, num_classes) if num_classes > 0 else nn.Identity() # nn.Linear()
-        if self.is_ZIGloss:
-            self.p_head = nn.Sequential(
-                               nn.Linear(embed_dim, 1),
-                           )
-            self.v_head = nn.Sequential(
-                               nn.Linear(embed_dim, 1),
-                               nn.ReLU()
-                           )
+
         self.apply(self._init_weights)
 
 
@@ -176,16 +167,9 @@ class PretrainVisionTransformerDecoder(nn.Module):
             x = self.norm(x[:, -return_token_num:])
         else:
             x = self.norm(x)
+        x = self.head(x) # [B, S, 1]
+        return x      
 
-        if self.is_ZIGloss:
-            p = self.p_head(x)
-            v = self.v_head(x)
-            x = self.head(x) # only return the mask tokens predict values, [B, S_mask, 1]
-            return (p, v, x)
-        else:
-            pv = None
-            x = self.head(x) # [B, S, 1]
-            return x
 
 class PretrainVisionTransformer(nn.Module):
     """ Vision Transformer with support for patch or hybrid CNN input stage
@@ -209,7 +193,6 @@ class PretrainVisionTransformer(nn.Module):
                  norm_layer=nn.LayerNorm, 
                  init_values=0., # learnable gamma in attention, learning influence of self-attention modules to the outputs.
                  use_learnable_pos_emb=False,
-                 is_ZIGloss=False,
                  num_classes=0, # avoid the error from create_fn in timm
                  in_chans=0, # avoid the error from create_fn in timm
                  ):
@@ -244,7 +227,7 @@ class PretrainVisionTransformer(nn.Module):
             drop_path_rate=drop_path_rate, 
             norm_layer=norm_layer, 
             init_values=init_values,
-            is_ZIGloss=is_ZIGloss)
+            )
 
         self.encoder_to_decoder = nn.Linear(encoder_embed_dim, decoder_embed_dim, bias=False)
 
@@ -252,7 +235,6 @@ class PretrainVisionTransformer(nn.Module):
         trunc_normal_(self.mask_token, std=.02)
         
         self.pos_embed = get_sinusoid_encoding_table(self.encoder.num_features, decoder_embed_dim)
-        self.is_ZIGloss = is_ZIGloss
 
 
     def _init_weights(self, m):
@@ -288,15 +270,63 @@ class PretrainVisionTransformer(nn.Module):
         return x
 
 @register_model
-def pretrain_mae_small_patch16_224(pretrained=False, pretrained_cfg=None, **kwargs):
+def pretrain_mae_18D_3L(pretrained=False, pretrained_cfg=None, **kwargs):
     model = PretrainVisionTransformer(
         encoder_num_features=30,
-        encoder_embed_dim=384,
+        encoder_embed_dim=18,
+        encoder_depth=3,
+        encoder_num_heads=6,
+        encoder_num_classes=0,
+        decoder_num_classes=1,
+        decoder_embed_dim=9,
+        decoder_depth=1,
+        decoder_num_heads=3,
+        mlp_ratio=4,
+        qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        **kwargs)
+    model.default_cfg = _cfg()
+    if pretrained:
+        checkpoint = torch.load(
+            kwargs["init_ckpt"], map_location="cpu"
+        )
+        model.load_state_dict(checkpoint["model"])
+    return model
+
+@register_model
+def pretrain_mae_18D_6L(pretrained=False, pretrained_cfg=None, **kwargs):
+    model = PretrainVisionTransformer(
+        encoder_num_features=30,
+        encoder_embed_dim=18,
+        encoder_depth=6,
+        encoder_num_heads=6,
+        encoder_num_classes=0,
+        decoder_num_classes=1,
+        decoder_embed_dim=9,
+        decoder_depth=2,
+        decoder_num_heads=3,
+        mlp_ratio=4,
+        qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        **kwargs)
+    model.default_cfg = _cfg()
+    if pretrained:
+        checkpoint = torch.load(
+            kwargs["init_ckpt"], map_location="cpu"
+        )
+        model.load_state_dict(checkpoint["model"])
+    return model
+
+@register_model
+def pretrain_mae_18D_12L(pretrained=False, pretrained_cfg=None, **kwargs):
+    model = PretrainVisionTransformer(
+        encoder_num_features=30,
+        encoder_embed_dim=18,
         encoder_depth=12,
         encoder_num_heads=6,
         encoder_num_classes=0,
         decoder_num_classes=1,
-        decoder_embed_dim=192,
+        decoder_embed_dim=9,
         decoder_depth=4,
         decoder_num_heads=3,
         mlp_ratio=4,
@@ -312,20 +342,20 @@ def pretrain_mae_small_patch16_224(pretrained=False, pretrained_cfg=None, **kwar
     return model
 
 @register_model
-def pretrain_mae_base_patch16_224(pretrained=False, pretrained_cfg=None, **kwargs):
+def pretrain_mae_18D_24L(pretrained=False, pretrained_cfg=None, **kwargs):
     model = PretrainVisionTransformer(
         encoder_num_features=30,
-        encoder_embed_dim=768, 
-        encoder_depth=12, 
-        encoder_num_heads=12,
+        encoder_embed_dim=18,
+        encoder_depth=24,
+        encoder_num_heads=6,
         encoder_num_classes=0,
         decoder_num_classes=1,
-        decoder_embed_dim=384,
-        decoder_depth=4,
-        decoder_num_heads=6,
-        mlp_ratio=4, 
+        decoder_embed_dim=9,
+        decoder_depth=8,
+        decoder_num_heads=3,
+        mlp_ratio=4,
         qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6), 
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
         **kwargs)
     model.default_cfg = _cfg()
     if pretrained:
@@ -334,4 +364,243 @@ def pretrain_mae_base_patch16_224(pretrained=False, pretrained_cfg=None, **kwarg
         )
         model.load_state_dict(checkpoint["model"])
     return model
- 
+
+@register_model
+def pretrain_mae_18D_48L(pretrained=False, pretrained_cfg=None, **kwargs):
+    model = PretrainVisionTransformer(
+        encoder_num_features=30,
+        encoder_embed_dim=18,
+        encoder_depth=48,
+        encoder_num_heads=6,
+        encoder_num_classes=0,
+        decoder_num_classes=1,
+        decoder_embed_dim=9,
+        decoder_depth=16,
+        decoder_num_heads=3,
+        mlp_ratio=4,
+        qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        **kwargs)
+    model.default_cfg = _cfg()
+    if pretrained:
+        checkpoint = torch.load(
+            kwargs["init_ckpt"], map_location="cpu"
+        )
+        model.load_state_dict(checkpoint["model"])
+    return model
+
+@register_model
+def pretrain_mae_30D_3L(pretrained=False, pretrained_cfg=None, **kwargs):
+    model = PretrainVisionTransformer(
+        encoder_num_features=30,
+        encoder_embed_dim=30,
+        encoder_depth=3,
+        encoder_num_heads=6,
+        encoder_num_classes=0,
+        decoder_num_classes=1,
+        decoder_embed_dim=15,
+        decoder_depth=1,
+        decoder_num_heads=3,
+        mlp_ratio=4,
+        qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        **kwargs)
+    model.default_cfg = _cfg()
+    if pretrained:
+        checkpoint = torch.load(
+            kwargs["init_ckpt"], map_location="cpu"
+        )
+        model.load_state_dict(checkpoint["model"])
+    return model
+
+@register_model
+def pretrain_mae_30D_6L(pretrained=False, pretrained_cfg=None, **kwargs):
+    model = PretrainVisionTransformer(
+        encoder_num_features=30,
+        encoder_embed_dim=30,
+        encoder_depth=6,
+        encoder_num_heads=6,
+        encoder_num_classes=0,
+        decoder_num_classes=1,
+        decoder_embed_dim=15,
+        decoder_depth=2,
+        decoder_num_heads=3,
+        mlp_ratio=4,
+        qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        **kwargs)
+    model.default_cfg = _cfg()
+    if pretrained:
+        checkpoint = torch.load(
+            kwargs["init_ckpt"], map_location="cpu"
+        )
+        model.load_state_dict(checkpoint["model"])
+    return model
+
+@register_model
+def pretrain_mae_30D_12L(pretrained=False, pretrained_cfg=None, **kwargs):
+    model = PretrainVisionTransformer(
+        encoder_num_features=30,
+        encoder_embed_dim=30,
+        encoder_depth=12,
+        encoder_num_heads=6,
+        encoder_num_classes=0,
+        decoder_num_classes=1,
+        decoder_embed_dim=15,
+        decoder_depth=4,
+        decoder_num_heads=3,
+        mlp_ratio=4,
+        qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        **kwargs)
+    model.default_cfg = _cfg()
+    if pretrained:
+        checkpoint = torch.load(
+            kwargs["init_ckpt"], map_location="cpu"
+        )
+        model.load_state_dict(checkpoint["model"])
+    return model
+
+@register_model
+def pretrain_mae_30D_24L(pretrained=False, pretrained_cfg=None, **kwargs):
+    model = PretrainVisionTransformer(
+        encoder_num_features=30,
+        encoder_embed_dim=30,
+        encoder_depth=24,
+        encoder_num_heads=6,
+        encoder_num_classes=0,
+        decoder_num_classes=1,
+        decoder_embed_dim=15,
+        decoder_depth=8,
+        decoder_num_heads=3,
+        mlp_ratio=4,
+        qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        **kwargs)
+    model.default_cfg = _cfg()
+    if pretrained:
+        checkpoint = torch.load(
+            kwargs["init_ckpt"], map_location="cpu"
+        )
+        model.load_state_dict(checkpoint["model"])
+    return model
+
+@register_model
+def pretrain_mae_60D_3L(pretrained=False, pretrained_cfg=None, **kwargs):
+    model = PretrainVisionTransformer(
+        encoder_num_features=30,
+        encoder_embed_dim=60,
+        encoder_depth=3,
+        encoder_num_heads=6,
+        encoder_num_classes=0,
+        decoder_num_classes=1,
+        decoder_embed_dim=30,
+        decoder_depth=1,
+        decoder_num_heads=3,
+        mlp_ratio=4,
+        qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        **kwargs)
+    model.default_cfg = _cfg()
+    if pretrained:
+        checkpoint = torch.load(
+            kwargs["init_ckpt"], map_location="cpu"
+        )
+        model.load_state_dict(checkpoint["model"])
+    return model
+
+@register_model
+def pretrain_mae_60D_6L(pretrained=False, pretrained_cfg=None, **kwargs):
+    model = PretrainVisionTransformer(
+        encoder_num_features=30,
+        encoder_embed_dim=60,
+        encoder_depth=6,
+        encoder_num_heads=6,
+        encoder_num_classes=0,
+        decoder_num_classes=1,
+        decoder_embed_dim=30,
+        decoder_depth=2,
+        decoder_num_heads=3,
+        mlp_ratio=4,
+        qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        **kwargs)
+    model.default_cfg = _cfg()
+    if pretrained:
+        checkpoint = torch.load(
+            kwargs["init_ckpt"], map_location="cpu"
+        )
+        model.load_state_dict(checkpoint["model"])
+    return model
+
+@register_model
+def pretrain_mae_60D_12L(pretrained=False, pretrained_cfg=None, **kwargs):
+    model = PretrainVisionTransformer(
+        encoder_num_features=30,
+        encoder_embed_dim=60,
+        encoder_depth=12,
+        encoder_num_heads=6,
+        encoder_num_classes=0,
+        decoder_num_classes=1,
+        decoder_embed_dim=30,
+        decoder_depth=4,
+        decoder_num_heads=3,
+        mlp_ratio=4,
+        qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        **kwargs)
+    model.default_cfg = _cfg()
+    if pretrained:
+        checkpoint = torch.load(
+            kwargs["init_ckpt"], map_location="cpu"
+        )
+        model.load_state_dict(checkpoint["model"])
+    return model
+
+@register_model
+def pretrain_mae_60D_24L(pretrained=False, pretrained_cfg=None, **kwargs):
+    model = PretrainVisionTransformer(
+        encoder_num_features=30,
+        encoder_embed_dim=60,
+        encoder_depth=24,
+        encoder_num_heads=6,
+        encoder_num_classes=0,
+        decoder_num_classes=1,
+        decoder_embed_dim=30,
+        decoder_depth=8,
+        decoder_num_heads=3,
+        mlp_ratio=4,
+        qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        **kwargs)
+    model.default_cfg = _cfg()
+    if pretrained:
+        checkpoint = torch.load(
+            kwargs["init_ckpt"], map_location="cpu"
+        )
+        model.load_state_dict(checkpoint["model"])
+    return model
+
+@register_model
+def pretrain_mae_120D_6L(pretrained=False, pretrained_cfg=None, **kwargs):
+    model = PretrainVisionTransformer(
+        encoder_num_features=30,
+        encoder_embed_dim=120,
+        encoder_depth=6,
+        encoder_num_heads=6,
+        encoder_num_classes=0,
+        decoder_num_classes=1,
+        decoder_embed_dim=60,
+        decoder_depth=2,
+        decoder_num_heads=3,
+        mlp_ratio=4,
+        qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        **kwargs)
+    model.default_cfg = _cfg()
+    if pretrained:
+        checkpoint = torch.load(
+            kwargs["init_ckpt"], map_location="cpu"
+        )
+        model.load_state_dict(checkpoint["model"])
+    return model

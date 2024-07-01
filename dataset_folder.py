@@ -77,15 +77,11 @@ def read_meta(fold, split_set, path: str, label_name: str):
         class_to_idx = None
     return fcsfile_to_class, class_to_idx
     
-def read_FilterValuesToNames(path: str, labelling: str):
+def read_FilterValuesToNames(path: str):
     import pandas as pd
-    # Deeper version
-    if labelling == "deeper":
-        typefilter= ["Plasmablast", "Th2/activated", "Treg/activated", "CD8Naive", "Treg", "EarlyNK", "CD66bnegCD45lo", "CD4Naive", "Th2", "CD8TEM2", "Th17", "IgDposMemB", "CD8Naive/activated", "CD8TEMRA/activated", "Eosinophil", "CD8TEM3/activated", "DPT", "MAITNKT", "gdT", "CD8TEM2/activated", "nnCD4CXCR5pos/activated", "IgDnegMemB", "CD45hiCD66bpos", "LateNK", "Neutrophil", "DNT", "Basophil", "pDC", "CD8TEM1/activated", "mDC", "Th1", "DNT/activated", "Th1/activated", "CD8TEMRA", "CD8TCM/activated", "CD8TEM1", "CD4Naive/activated", "NaiveB", "ILC", "CD8TEM3", "Th17/activated", "CD8TCM", "ClassicalMono", "DPT/activated", "nnCD4CXCR5pos", "TotalMonocyte"]
-    # Shallower version
-    elif labelling == "simple":
-        typefilter= ["Total Monocytes", "Basophils", "CD4+ T", "Total NK cells", "CD8+ T", "gd T cells", "Eosinophils", "CD8 Naive", "Plasmablasts", "B cells", "pDC", "CD4 Naive", "Neutrophils"]
 
+    typefilter= ["Plasmablast", "Th2/activated", "Treg/activated", "CD8Naive", "Treg", "EarlyNK", "CD66bnegCD45lo", "CD4Naive", "Th2", "CD8TEM2", "Th17", "IgDposMemB", "CD8Naive/activated", "CD8TEMRA/activated", "Eosinophil", "CD8TEM3/activated", "DPT", "MAITNKT", "gdT", "CD8TEM2/activated", "nnCD4CXCR5pos/activated", "IgDnegMemB", "CD45hiCD66bpos", "LateNK", "Neutrophil", "DNT", "Basophil", "pDC", "CD8TEM1/activated", "mDC", "Th1", "DNT/activated", "Th1/activated", "CD8TEMRA", "CD8TCM/activated", "CD8TEM1", "CD4Naive/activated", "NaiveB", "ILC", "CD8TEM3", "Th17/activated", "CD8TCM", "ClassicalMono", "DPT/activated", "nnCD4CXCR5pos", "TotalMonocyte"]
+    
     df = pd.read_csv(path, header=None)
     df = df[np.isin(df.iloc[:,1], typefilter)]
     df = df.reset_index(drop=True)
@@ -199,7 +195,6 @@ class CellFolder(DatasetFolder):
             split_set,
             root: str,
             predefined_class_to_idx = None,
-            labelling = "deeper",
             fewshot = False,
             nshot = None,
             transform: Optional[Callable] = None,
@@ -207,9 +202,9 @@ class CellFolder(DatasetFolder):
             loader: Callable[[str], Any] = fcs_loader
     ):
         super(CellFolder, self).__init__(root, transform=transform, target_transform=target_transform)
-        samples, class_to_idx = self.make_dataset(fold, split_set, self.root, self.fcsfiles, self.metafile, self.FilterValuesToNamesfile, labelling, predefined_class_to_idx) # (path, cell idx, class idx)
+        samples, class_to_idx = self.make_dataset(fold, split_set, self.root, self.fcsfiles, self.metafile, self.FilterValuesToNamesfile, predefined_class_to_idx) # (path, cell idx, class idx)
         
-        # Few-shot learning setup (training set only)
+        # Few-shot learning setup (training/val set only)
         if ((split_set == 0) or (split_set == 1)) and fold and fewshot:
             tmp_samples = {}
             for sample in samples:
@@ -242,7 +237,6 @@ class CellFolder(DatasetFolder):
         fcsfiles: list[str],
         metafile: str,
         FilterValuesToNamesfile: str,
-        labelling: str,
         predefined_class_to_idx=None
     ) -> List[Tuple[str, int]]:
   
@@ -250,13 +244,13 @@ class CellFolder(DatasetFolder):
         directory = os.path.expanduser(directory)
   
         fcsfile_to_class, _ = read_meta(fold, split_set, os.path.join(directory, metafile), None)
-        value_to_class, class_to_idx = read_FilterValuesToNames(os.path.join(directory, FilterValuesToNamesfile), labelling)
+        value_to_class, class_to_idx = read_FilterValuesToNames(os.path.join(directory, FilterValuesToNamesfile))
         if predefined_class_to_idx is not None:
             class_to_idx = predefined_class_to_idx
         for fname in fcsfiles:
             path = os.path.join(directory, fname)
             if fname in fcsfile_to_class.keys():
-                for idx, value in enumerate(read_fcs(path)[:,-1]):
+                for idx, value in enumerate(self.loader(path)[:,-1]):
                     if (not np.isnan(value)) and (value in value_to_class.keys()):
                         instances.append((path, idx, class_to_idx[value_to_class[value]]))
 
@@ -321,100 +315,3 @@ class CellFolder(DatasetFolder):
         labels = torch.tensor(labels)
         
         return samples, labels
-
-
-
-class SampleFolder(DatasetFolder):
-    """A generic data loader where the samples are arranged in this way: ::
-        root/xxx.fcs
-        root/xxy.fcs
-        root/xxz.fcs
-        root/meta.csv
-    Args:
-        root (string): Root directory path.
-        loader (callable): A function to load a sample given its path.
-
-        transform (callable, optional): A function/transform that takes in
-            a sample and returns a transformed version.
-            E.g, ``transforms.RandomCrop`` for images.
-        target_transform (callable, optional): A function/transform that takes
-            in the target and transforms it.
-
-     Attributes:
-        classes (list): List of the class names sorted alphabetically.
-        class_to_idx (dict): Dict with items (class_name, class_index).
-        samples (list): List of (sample path, class_index) tuples
-        targets (list): The class_index value for each image in the dataset
-    """
-    def __init__(
-            self,
-            fold,
-            split_set,
-            root: str,
-            label_name: str,
-            predefined_class_to_idx = None,
-            transform: Optional[Callable] = None,
-            target_transform: Optional[Callable] = None,
-            loader: Callable[[str], Any] = fcs_loader
-    ):
-        super(SampleFolder, self).__init__(root, transform=transform, target_transform=target_transform)
-        samples, class_to_idx = self.make_dataset(fold, split_set, self.root, self.fcsfiles, self.metafile, label_name, predefined_class_to_idx) # (path, class idx)
-
-        if len(samples) == 0:
-            msg = "Found 0 files in subfolders of: {}\n".format(self.root)
-            raise RuntimeError(msg)
-
-        self.loader = loader
-
-        self.classes = list(class_to_idx.keys())
-        self.class_to_idx = class_to_idx
-        self.samples = samples
-        
-    def make_dataset(
-        self,
-        fold,
-        split_set,
-        directory: str,
-        fcsfiles: list[str],
-        metafile: str,
-        label_name: str,
-        predefined_class_to_idx=None
-    ) -> List[Tuple[str, int]]:
-    
-        instances = []
-        directory = os.path.expanduser(directory)
-    
-        fcsfile_to_class, class_to_idx = read_meta(fold, split_set, os.path.join(directory, metafile), label_name)
-        if predefined_class_to_idx is not None:
-            class_to_idx = predefined_class_to_idx
-        for fname in fcsfiles:
-            path = os.path.join(directory, fname)
-            if fname in fcsfile_to_class.keys():
-                instances.append((path, class_to_idx[fcsfile_to_class[fname]]))
-  
-        return instances, class_to_idx
-
-    def __getitem__(self, index: int) -> Tuple[Any, Any]:
-        """
-        Args:
-            index (int): Index
-        Returns:
-            tuple: (sample, target) where target is class_index of the target class.
-        """
-        while True:
-            try:
-                path, target = self.samples[index]
-                fcs = self.loader(path)
-                break
-            except Exception as e:
-                print(e)
-                index = random.randint(0, len(self.samples) - 1)
-        if self.transform is not None:
-            fcs, _ = self.transform(fcs)
-        if self.target_transform is not None:
-            target = self.target_transform(target)
-        return (fcs, _), target
-
-    def __len__(self) -> int:
-        return len(self.samples)
-

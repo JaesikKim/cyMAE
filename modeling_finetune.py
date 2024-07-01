@@ -287,19 +287,139 @@ class CNN1D(nn.Module):
         x = self.fc2(x)
         return x
 
+# @register_model
+# def vit_tinytiny1L_patch16_224(pretrained=False, pretrained_cfg=None,  **kwargs):
+#     model = VisionTransformer(
+#         embed_dim=30, depth=1, num_heads=6, mlp_ratio=4, qkv_bias=True,
+#         norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+#     #model.default_cfg = _cfg()
+#     return model
+
+# @register_model
+# def vit_tinytiny3L_patch16_224(pretrained=False, pretrained_cfg=None,  **kwargs):
+#     model = VisionTransformer(
+#         embed_dim=30, depth=3, num_heads=6, mlp_ratio=4, qkv_bias=True,
+#         norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+#     #model.default_cfg = _cfg()
+#     return model
+
+# @register_model
+# def vit_tinytiny6L_patch16_224(pretrained=False, pretrained_cfg=None,  **kwargs):
+#     model = VisionTransformer(
+#         embed_dim=30, depth=6, num_heads=6, mlp_ratio=4, qkv_bias=True,
+#         norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+#     #model.default_cfg = _cfg()
+#     return model
+
+# @register_model
+# def vit_tinytiny_patch16_224(pretrained=False, pretrained_cfg=None,  **kwargs):
+#     model = VisionTransformer(
+#         embed_dim=30, depth=12, num_heads=6, mlp_ratio=4, qkv_bias=True,
+#         norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+#     #model.default_cfg = _cfg()
+#     return model
+
+# @register_model
+# def vit_tiny_patch16_224(pretrained=False, pretrained_cfg=None,  **kwargs):
+#     model = VisionTransformer(
+#         embed_dim=96, depth=12, num_heads=6, mlp_ratio=4, qkv_bias=True,
+#         norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+#     #model.default_cfg = _cfg()
+#     return model
+
+# @register_model
+# def vit_small_patch16_224(pretrained=False, pretrained_cfg=None,  **kwargs):
+#     model = VisionTransformer(
+#         embed_dim=192, depth=12, num_heads=6, mlp_ratio=4, qkv_bias=True,
+#         norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+#     #model.default_cfg = _cfg()
+#     return model
+
+# @register_model
+# def vit_medium_patch16_224(pretrained=False, pretrained_cfg=None,  **kwargs):
+#     model = VisionTransformer(
+#         embed_dim=384, depth=12, num_heads=6, mlp_ratio=4, qkv_bias=True,
+#         norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+#     #model.default_cfg = _cfg()
+#     return model
+
+# @register_model
+# def vit_large_patch16_224(pretrained=False, pretrained_cfg=None, **kwargs):
+#     model = VisionTransformer(
+#         embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True,
+#         norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+#     #model.default_cfg = _cfg()
+#     return model
 
 @register_model
-def vit_small_patch16_224(pretrained=False, pretrained_cfg=None,  **kwargs):
+def cymae_18D_6L(pretrained=False, pretrained_cfg=None,  **kwargs):
     model = VisionTransformer(
-        embed_dim=384, depth=12, num_heads=6, mlp_ratio=4, qkv_bias=True,
+        embed_dim=18, depth=6, num_heads=6, mlp_ratio=4, qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    #model.default_cfg = _cfg()
+    return model
+@register_model
+def cymae_30D_6L(pretrained=False, pretrained_cfg=None,  **kwargs):
+    model = VisionTransformer(
+        embed_dim=30, depth=6, num_heads=6, mlp_ratio=4, qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    #model.default_cfg = _cfg()
+    return model
+@register_model
+def cymae_60D_6L(pretrained=False, pretrained_cfg=None,  **kwargs):
+    model = VisionTransformer(
+        embed_dim=60, depth=6, num_heads=6, mlp_ratio=4, qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    #model.default_cfg = _cfg()
+    return model
+@register_model
+def cymae_120D_6L(pretrained=False, pretrained_cfg=None,  **kwargs):
+    model = VisionTransformer(
+        embed_dim=120, depth=6, num_heads=6, mlp_ratio=4, qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     #model.default_cfg = _cfg()
     return model
 
 @register_model
-def vit_base_patch16_224(pretrained=False, pretrained_cfg=None, **kwargs):
+def cymae_30D_3L(pretrained=False, pretrained_cfg=None,  **kwargs):
     model = VisionTransformer(
-        embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True,
+        embed_dim=30, depth=3, num_heads=6, mlp_ratio=4, qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    #model.default_cfg = _cfg()
+    return model
+@register_model
+def cymae_30D_12L(pretrained=False, pretrained_cfg=None,  **kwargs):
+    model = VisionTransformer(
+        embed_dim=30, depth=12, num_heads=6, mlp_ratio=4, qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    #model.default_cfg = _cfg()
+    return model
+@register_model
+def cymae_30D_24L(pretrained=False, pretrained_cfg=None,  **kwargs):
+    model = VisionTransformer(
+        embed_dim=30, depth=24, num_heads=6, mlp_ratio=4, qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    #model.default_cfg = _cfg()
+    return model
+
+@register_model
+def cymae_60D_3L(pretrained=False, pretrained_cfg=None,  **kwargs):
+    model = VisionTransformer(
+        embed_dim=60, depth=3, num_heads=6, mlp_ratio=4, qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    #model.default_cfg = _cfg()
+    return model
+@register_model
+def cymae_60D_12L(pretrained=False, pretrained_cfg=None,  **kwargs):
+    model = VisionTransformer(
+        embed_dim=60, depth=12, num_heads=6, mlp_ratio=4, qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    #model.default_cfg = _cfg()
+    return model
+@register_model
+def cymae_60D_24L(pretrained=False, pretrained_cfg=None,  **kwargs):
+    model = VisionTransformer(
+        embed_dim=60, depth=24, num_heads=6, mlp_ratio=4, qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     #model.default_cfg = _cfg()
     return model

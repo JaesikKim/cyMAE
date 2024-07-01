@@ -17,15 +17,6 @@ import utils
 from einops import rearrange
 
 
-def zero_inflated_GaussianNLL_loss(input, target):
-    p, var, output = input
-    bernoulli_loss = F.binary_cross_entropy_with_logits(p, (target == 0).float(), reduction="none")
-    neg_gaussiannll_loss = F.gaussian_nll_loss(output, target, var, reduction="none")
-    loss = torch.where(target == 0, bernoulli_loss, neg_gaussiannll_loss)
-    loss = torch.mean(loss)
-    
-    return loss
-
 
 def train_one_epoch(args, model: torch.nn.Module, data_loader: Iterable, optimizer: torch.optim.Optimizer,
                     device: torch.device, epoch: int, loss_scaler, max_norm: float = 0, num_features: int = 30, 
@@ -38,10 +29,7 @@ def train_one_epoch(args, model: torch.nn.Module, data_loader: Iterable, optimiz
     header = 'Epoch: [{}]'.format(epoch)
     print_freq = 10
 
-    if args.is_ZIGloss:
-        loss_func = zero_inflated_GaussianNLL_loss
-    else:
-        loss_func = nn.MSELoss()
+    loss_func = nn.MSELoss()
 
     for step, (batch, _) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         # assign learning rate & weight decay for each step

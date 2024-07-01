@@ -23,10 +23,10 @@ def get_args():
     parser = argparse.ArgumentParser('MAE pre-training script', add_help=False)
     parser.add_argument('--batch_size', default=64, type=int)
     parser.add_argument('--epochs', default=300, type=int)
-    parser.add_argument('--save_ckpt_freq', default=10, type=int)
+    parser.add_argument('--save_ckpt_freq', default=50, type=int)
 
     # Model parameters
-    parser.add_argument('--model', default='pretrain_mae_base_patch16_224', type=str, metavar='MODEL',
+    parser.add_argument('--model', default='', type=str, metavar='MODEL',
                         help='Name of model to train')
 
     parser.add_argument('--mask_ratio', default=0.75, type=float,
@@ -40,10 +40,6 @@ def get_args():
                         
     parser.add_argument('--normlize_target', default=True, type=bool,
                         help='normalized the target patch pixels')
-
-    parser.add_argument('--is_ZIGloss', action='store_true', default=False,
-                        help='Use zero-inflated gaussian NLL loss instead of MSE loss')
-
 
     # Optimizer parameters
     parser.add_argument('--opt', default='adamw', type=str, metavar='OPTIMIZER',
@@ -82,7 +78,7 @@ def get_args():
     #                    help='Training interpolation (random, bilinear, bicubic default: "bicubic")')
 
     # Dataset parameters
-    parser.add_argument('--data_path', default='~/covid19/data/acute_covid_cytof_with_labels/', type=str,
+    parser.add_argument('--data_path', default='/project/kimgroup_immune_health/data/covid19/acute_covid_cytof_deeper_with_labels/', type=str,
                         help='dataset path')
     # parser.add_argument('--data_path', default='data_for_practice/train/', type=str,
     #                     help='dataset path')
@@ -125,7 +121,6 @@ def get_model(args):
         pretrained=False,
         drop_path_rate=args.drop_path,
         drop_block_rate=None,
-        is_ZIGloss=args.is_ZIGloss
     )
 
     return model
@@ -221,7 +216,7 @@ def main(args):
     utils.auto_load_model(
         args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
 
-    model_name = args.model+"_"+str(args.mask_ratio)+("_ZIGloss" if args.is_ZIGloss else "")
+    model_name = args.model+"_"+str(args.mask_ratio)+"R"+"_"+str(args.lr)+"lr"
 
     print(f"Start training for {args.epochs} epochs")
     start_time = time.time()

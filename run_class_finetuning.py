@@ -33,14 +33,14 @@ import modeling_finetune
 
 
 def get_args():
-    parser = argparse.ArgumentParser('MAE fine-tuning and evaluation script for image classification', add_help=False)
+    parser = argparse.ArgumentParser('cyMAE fine-tuning and evaluation script', add_help=False)
     parser.add_argument('--batch_size', default=64, type=int)
     parser.add_argument('--epochs', default=30, type=int)
     parser.add_argument('--update_freq', default=1, type=int)
     parser.add_argument('--save_ckpt_freq', default=50, type=int)
 
     # Model parameters
-    parser.add_argument('--model', default='vit_base_patch16_224', type=str, metavar='MODEL',
+    parser.add_argument('--model', default='', type=str, metavar='MODEL',
                         help='Name of model to train')
 
     parser.add_argument('--input_size', default=30, type=int,
@@ -112,10 +112,6 @@ def get_args():
                         help='Do not random erase first (clean) augmentation split')
 
     # * Mixup params
-    parser.add_argument('--ensemble', action='store_true', default=False,
-                        help='Inference multiple times and ensemble them')
-    parser.add_argument('--ensemble_times', type=int, default=100,
-                        help='how many repeats for ensemble')
     #parser.add_argument('--mixup', type=float, default=0.8,
     #                    help='mixup alpha, mixup enabled if > 0.')
     #parser.add_argument('--cutmix', type=float, default=1.0,
@@ -143,7 +139,7 @@ def get_args():
     parser.add_argument('--nshot', default=5, type=int)
 
     # Dataset parameters
-    parser.add_argument('--data_path', default='~/covid19/data/vaccine_covid_cytof_deeper_with_labels/', type=str,
+    parser.add_argument('--data_path', default='/project/kimgroup_immune_health/data/covid19/vaccine_covid_cytof_deeper_with_labels/', type=str,
                         help='dataset path')
     parser.add_argument('--external_data_path', default='', type=str,
                         help='dataset path for external evaluation')
@@ -154,8 +150,6 @@ def get_args():
 
     parser.add_argument('--fold', default="", nargs='?', choices=['0','1','2','3','4'],
                         help='specify fold from fold_0 to fold_4. None is using all samples for evaluation only')
-    parser.add_argument('--task', default='sample-level', nargs='?', choices=['sample-level', 'cell-level'],
-                        help='sample-level task or cell-level task')
     parser.add_argument('--nb_classes', default=2, type=int,
                         help='number of the classification types')
     parser.add_argument('--label_name', default='',
@@ -273,7 +267,7 @@ def main(args, ds_init):
 
     data_loader_train = torch.utils.data.DataLoader(
         dataset_train, sampler=sampler_train,
-        batch_size=args.batch_size if args.task == "cell-level" else 1,
+        batch_size=args.batch_size,
         num_workers=args.num_workers,
         pin_memory=args.pin_mem,
         drop_last=True,
@@ -284,7 +278,7 @@ def main(args, ds_init):
     if dataset_val is not None:
         data_loader_val = torch.utils.data.DataLoader(
             dataset_val, sampler=sampler_val,
-            batch_size=int(1.5 * args.batch_size) if args.task == "cell-level" else 1,
+            batch_size=int(1.5 * args.batch_size),
             num_workers=args.num_workers,
             pin_memory=args.pin_mem,
             drop_last=False,
@@ -297,7 +291,7 @@ def main(args, ds_init):
     if dataset_test is not None:
         data_loader_test = torch.utils.data.DataLoader(
             dataset_test, sampler=sampler_test,
-            batch_size=int(1.5 * args.batch_size) if args.task == "cell-level" else 1,
+            batch_size=int(1.5 * args.batch_size),
             num_workers=args.num_workers,
             pin_memory=args.pin_mem,
             drop_last=False,
@@ -398,7 +392,7 @@ def main(args, ds_init):
     print("Model = %s" % str(model_without_ddp))
     print('number of params:', n_parameters)
 
-    total_batch_size = (args.batch_size if args.task == "cell-level" else 1) * args.update_freq * utils.get_world_size()
+    total_batch_size = args.batch_size * args.update_freq * utils.get_world_size()
     num_training_steps_per_epoch = len(dataset_train) // total_batch_size
     args.lr = args.lr * total_batch_size / 256
     print("LR = %.8f" % args.lr)
@@ -464,16 +458,12 @@ def main(args, ds_init):
         args=args, model=model, model_without_ddp=model_without_ddp,
         optimizer=optimizer, loss_scaler=loss_scaler, model_ema=model_ema)
 
-    if args.task == "cell-level":
-        args.ensemble = False
-
     if args.eval:
         test_stats = evaluate(args, data_loader_test, model, device)
         print(f"Accuracy of the network on the {len(dataset_test)} test samples: {test_stats['acc1']:.1f}%")
         exit(0)
 
-    model_name = args.model+("_pretrained"+"_".join(args.finetune.split("_")[5:-1]) if args.finetune else "")+("_fewshot"+str(args.nshot) if args.fewshot else "")+("_freeze" if args.freeze else "")+'_'+(args.label_name if args.task == "sample-level" else "cell")+("deeper" if args.nb_classes >20 else "")+('_fold_'+args.fold if args.fold else "")
-
+    model_name = args.model+("_pretrained"+args.finetune.split("_")[4] if args.finetune else "")+("_fewshot"+str(args.nshot) if args.fewshot else "")+("_freeze" if args.freeze else "")+('_fold'+args.fold if args.fold else "")+('_'+str(args.lr)+'lr')+('_'+str(args.epochs)+'epoch')
     if not args.resume and os.path.isfile(os.path.join(args.output_dir, model_name+'_log.txt')):
         os.remove(os.path.join(args.output_dir, model_name+'_log.txt'))
 
