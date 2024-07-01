@@ -6,6 +6,7 @@ This project introduces the Cytometry Masked Autoencoder (cyMAE), an automated s
 
 - [Installation](#installation)
 - [Usage](#usage)
+- [Training from scratch](#Training-from-scratch)
 - [Citation](#Citation)
 - [License](#license)
 - [Contact](#contact)
@@ -87,12 +88,37 @@ TBA
 ## Training from scratch
 If you want to use cyMAE with a different panel, you need to train the model from scratch. We provide the training and evaluation codes. Follow the instructions below:
 
-### Input format
-TBA
+### Input format for Dataloader
+A generic data loader where the samples are arranged as follows:
+```bash
+root/xxx.fcs
+root/xxy.fcs
+root/xxz.fcs
+root/_FilterValuesToNames.csv
+root/meta.csv
+```
+
+* FCS file requirements:
+    * Modify the feature list in `dataset_folder.py` at line 51 to include your specific markers.
+    ```python
+    ['marker1', 'marker2', ..., 'markerN' 'OmiqFilter']
+    ```
+    * For fine-tuning, the last column, 'OmiqFilter', should represent the cell type ID in integer format.
+       
+* _FilterValuesToNames.csv:
+
+	* This file should map cell type IDs to their respective names.
+	* See Example: `file_examples/example_FilterValuesToNames.csv`
+
+* meta.csv:
+
+	* For fine-tuning, this file should include fold information to split the data into training (0), validation (1), and test (2) sets.
+	* See Example: `file_examples/example_meta.csv`
 
 ### Training
-```
+```bash
 CUDA_VISIBLE_DEVICES=0 python run_mae_pretraining.py \
+   --data_path path_for_training_set \
    --model pretrain_mae_30D_6L \
    --epochs 250 \
    --warmup_epochs 5 \
@@ -101,8 +127,9 @@ CUDA_VISIBLE_DEVICES=0 python run_mae_pretraining.py \
    --lr 1.5e-5
 ```
 ### Finetuning
-```
+```bash
 CUDA_VISIBLE_DEVICES=0 python run_class_finetuning.py \
+   --data_path path_for_finetuning_set \
    --fold 0 \
    --lr 1e-4 \
    --min_lr 1e-6 \
@@ -114,11 +141,12 @@ CUDA_VISIBLE_DEVICES=0 python run_class_finetuning.py \
    --model cymae_30D_6L \
    --finetune path_for_pretrained_model.pth
 ```
-#### Evaluation
-```
+### Evaluation
+```bash
 CUDA_VISIBLE_DEVICES=0 python run_class_finetuning.py \
     --eval \
-    --external_data_path path_for_evaluation_dir \
+    --data_path path_for_finetuning_set \
+    --external_data_path path_for_evaluation_set \
     --model cymae_30D_6L \
     --finetune path_for_finetuend_model.pth \
     --nb_classes 46 \
@@ -146,6 +174,10 @@ CUDA_VISIBLE_DEVICES=0 python run_class_finetuning.py \
     journal = {bioRxiv}
 }
 ```
+
+### Acknowledgement
+This project was adapted from the MAE code found at the following repository. We extend our gratitude for their work.
+https://github.com/pengzhiliang/MAE-pytorch
 
 ### License
 Apache-2.0 license
