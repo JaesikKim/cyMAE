@@ -250,7 +250,7 @@ class CellFolder(DatasetFolder):
         for fname in fcsfiles:
             path = os.path.join(directory, fname)
             if fname in fcsfile_to_class.keys():
-                for idx, value in enumerate(self.loader(path)[:,-1]):
+                for idx, value in enumerate(read_fcs(path)[:,-1]):
                     if (not np.isnan(value)) and (value in value_to_class.keys()):
                         instances.append((path, idx, class_to_idx[value_to_class[value]]))
 
