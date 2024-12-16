@@ -42,6 +42,7 @@ Download the model checkpoints from [Google Drive](https://drive.google.com/driv
 import torch
 from timm.models import create_model
 import modeling_finetune
+import numpy as np
 
 device = "cuda:0" # specify your device (cpu or gpu)
 checkpoint = torch.load("cymae_30D_6L_pretrained0.25R_fold0_0.0064lr_200epoch_checkpoint-best.pth", map_location=torch.device(device))
@@ -74,7 +75,8 @@ idx_to_class = {0: 'Plasmablast', 1: 'Th2/activated', 2: 'Treg/activated', 3: 'C
 # '164Dy_TCRgd', '166Er_CD294', '167Er_CD197_CCR7', '168Er_CD14', '170Er_CD3', 
 # '171Yb_CD20', '172Yb_CD66b', '173Yb_HLA-DR', '174Yb_IgD', '176Yb_CD127_IL-7Ra']
 
-input_data = torch.tensor([your_input_data]).to(device) # torch.tensor (C, 30)
+your_input_data = np.arcsinh(your_input_data) # input data has to be "cell" by "protein marker" matrix
+input_data = torch.tensor(your_input_data).to(device) # torch.tensor (number of cells, 30)
 with torch.no_grad():
 preds = model(input_data)
 preds = torch.max(preds,1)[1]
