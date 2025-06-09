@@ -25,11 +25,6 @@ This project introduces the Cytometry Masked Autoencoder (cyMAE), an automated s
     conda activate cymae
     ```
 
-3. Install the required dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
-
 ## Usage
 
 ### Model checkpoints
@@ -85,7 +80,7 @@ print(preds)
 ```
 
 ### Tutorials
-TBA
+We are currently working on a panel-agnostic version after receiving feedback on the limitation that the current model only works with a single panel. We will update the model and release a tutorial soon, but for now, if you have cyMAE on your panel, you can still use the current model after pretraining.
 
 ## Training from scratch
 If you want to use cyMAE with a different panel, you need to train the model from scratch. We provide the training and evaluation codes. Follow the instructions below:
@@ -157,10 +152,10 @@ CUDA_VISIBLE_DEVICES=0 python run_class_finetuning.py \
 
 ### Dependencies
 - python 3 with numpy >= 1.23.5
-- pytorch >= 1.13.1
+- pytorch == 2.6.0
 - scikit-Learn >= 1.2.0
 - pandas >= 1.5.3
-- FlowCytometryTools == 0.5.1
+- fcsparser == 0.2.8
 - shap >= 0.45.1
 - statsmodels >= 0.14.2
 - timm >= 0.6.12

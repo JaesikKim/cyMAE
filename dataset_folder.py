@@ -6,7 +6,7 @@
 # https://github.com/facebookresearch/dino
 # --------------------------------------------------------'
 from torchvision.datasets.vision import VisionDataset
-from FlowCytometryTools import FCMeasurement
+import fcsparser
 
 from collections import deque
 import os
@@ -57,9 +57,10 @@ def read_fcs(path: str):
        '170Er_CD3', '171Yb_CD20', '172Yb_CD66b', '173Yb_HLA-DR', '174Yb_IgD',
        '176Yb_CD127_IL-7Ra', 'OmiqFilter']
     
-    fcs = FCMeasurement(ID="_".join(path.split("/")[-1].split("_")[:-1]), datafile=path).data
-    fcs = fcs[features]
-    return fcs.to_numpy()
+    _, data = fcsparser.parse(path, reformat_meta=True)
+    fcs_data = data[features]
+    return fcs_data.to_numpy()
+
 
 def read_meta(fold, split_set, path: str, label_name: str):
     import pandas as pd
